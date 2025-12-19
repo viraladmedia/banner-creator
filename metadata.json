@@ -1,0 +1,5 @@
+{
+  "name": "Banner Creator",
+  "description": "A comprehensive social media suite featuring an AI Banner Generator that creates visual assets from topics and a Gemini 2.5 powered Image Editor.",
+  "requestFramePermissions": []
+}
