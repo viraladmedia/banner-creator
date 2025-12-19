@@ -1,8 +1,29 @@
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 
-// Initialize the client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazily create the client so missing env vars don't crash render
+const resolveApiKey = () => {
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
+  return (
+    metaEnv?.VITE_GEMINI_API_KEY ||
+    metaEnv?.GEMINI_API_KEY ||
+    metaEnv?.API_KEY ||
+    (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY || process.env.API_KEY : undefined)
+  );
+};
+
+let ai: GoogleGenAI | null = null;
+const getClient = () => {
+  if (ai) return ai;
+
+  const apiKey = resolveApiKey();
+  if (!apiKey) {
+    throw new Error("Missing Gemini API key. Set VITE_GEMINI_API_KEY or GEMINI_API_KEY in your environment.");
+  }
+
+  ai = new GoogleGenAI({ apiKey });
+  return ai;
+};
 
 // --- Type Definitions ---
 
@@ -96,7 +117,8 @@ export const generateBannerPlan = async (request: BannerRequest): Promise<Banner
     Has Asset Upload: ${request.hasAssetImage}
   `;
 
-  const response = await ai.models.generateContent({
+  const client = getClient();
+  const response = await client.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: prompt,
     config: {
@@ -172,8 +194,9 @@ export const generateImage = async (prompt: string, aspectRatio: AspectRatio, re
 
   // Internal helper to execute generation
   const executeGen = async (promptText: string) => {
+      const client = getClient();
       const parts: any[] = [{ text: promptText }];
-      const response = await ai.models.generateContent({
+      const response = await client.models.generateContent({
         model: 'gemini-2.5-flash-image', 
         contents: { parts },
         config: {
@@ -228,7 +251,8 @@ export const editImageWithGemini = async (base64Image: string, prompt: string): 
     const mimeType = base64Image.match(/^data:image\/(png|jpeg|jpg|webp);base64,/)?.[1] || 'png';
   
     try {
-      const response = await ai.models.generateContent({
+      const client = getClient();
+      const response = await client.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
           parts: [
