@@ -169,15 +169,22 @@ export const generateBannerPlan = async (request: BannerRequest): Promise<Banner
     },
   });
 
-  if (!response.text) {
+  const rawText = 
+    typeof response.text === 'function'
+      ? response.text()
+      : typeof (response as any).response?.text === 'function'
+        ? (response as any).response.text()
+        : (response as any).text;
+
+  if (!rawText) {
     throw new Error("No text returned from Gemini");
   }
 
   try {
-    const jsonText = response.text.replace(/```json\n?|\n?```/g, "").trim();
+    const jsonText = rawText.replace(/```json\n?|\n?```/g, "").trim();
     return JSON.parse(jsonText) as BannerPlan;
   } catch (e) {
-    console.error("Failed to parse JSON", response.text);
+    console.error("Failed to parse JSON", rawText);
     throw new Error("Invalid JSON response from AI");
   }
 };
